@@ -1,139 +1,57 @@
-<script setup lang="ts">
-import { ref } from 'vue';
-import { Terminal, Code2, Rocket, Share2, Cpu } from 'lucide-vue-next';
-
-/**
- * CONFIGURATION
- */
-const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || "PASTE_YOUR_ADDRESS_HERE";
-const userAddress = ref("");
-const statusMessage = ref("System Ready. Awaiting Connection...");
-
-// State for the Forge
-const prompt = ref("");
-const generatedCode = ref("");
-const isArchitecting = ref(false);
-
-const targetNetwork = {
-  chainId: '0x107d',
-  chainName: 'GenLayer Asimov L2',
-  rpcUrls: ['https://rpc.testnet-chain.genlayer.com'],
-  nativeCurrency: { name: 'GEN', symbol: 'GEN', decimals: 18 }
-};
-
-/**
- * WALLET LOGIC
- */
-const connectWallet = async () => {
-  const ethWindow = window as any;
-  if (!ethWindow.ethereum) return;
-  try {
-    const accounts = await ethWindow.ethereum.request({ method: 'eth_requestAccounts' });
-    userAddress.value = accounts[0];
-    await ethWindow.ethereum.request({
-      method: 'wallet_addEthereumChain',
-      params: [targetNetwork],
-    });
-    statusMessage.value = "GenForge Core Online.";
-  } catch (e) {
-    statusMessage.value = "Connection Failed.";
-  }
-};
-
-/**
- * GENFORGE LOGIC
- * This triggers the Intelligent Contract on Studionet
- */
-const architectContract = async () => {
-  if (!prompt.value) return;
-  
-  isArchitecting.value = true;
-  statusMessage.value = "GenVM Validators reaching consensus on AI output...";
-  
-  try {
-    const ethWindow = window as any;
-    // Trigger real transaction to your GenForge contract
-    const tx = await ethWindow.ethereum.request({
-      method: 'eth_sendTransaction',
-      params: [{
-        from: userAddress.value,
-        to: contractAddress,
-        data: '0x', // In a full SDK, this encodes draft_contract(prompt.value)
-      }]
-    });
-
-    console.log("TX Hash:", tx);
-    
-    // Simulation of the retrieval (In full build, you'd call get_code)
-    setTimeout(() => {
-      generatedCode.value = `from genlayer import *\n\nclass IntelligentContract:\n    def __init__(self):\n        self.owner = gl.message.sender\n\n    @gl.public.write\n    def execute_logic(self, val: int):\n        # Generated based on: ${prompt.value}\n        return f"Logic executed with {val}"`;
-      statusMessage.value = "Contract Architected Successfully.";
-      isArchitecting.value = false;
-    }, 3000);
-
-  } catch (e) {
-    statusMessage.value = "Architecting Failed. Check Gas.";
-    isArchitecting.value = false;
-  }
-};
-
-const copyToClipboard = () => {
-  navigator.clipboard.writeText(generatedCode.value);
-  statusMessage.value = "Code copied to clipboard!";
-};
-</script>
-
 <template>
-  <div class="forge-app">
-    <header class="header">
-      <div class="brand">
-        <Cpu class="icon-primary" />
-        <h1>GEN<span>FORGE</span></h1>
+  <div class="terminal-container">
+    <header class="window-header">
+      <div class="window-controls">
+        <span class="dot close"></span>
+        <span class="dot minimize"></span>
+        <span class="dot expand"></span>
       </div>
-      <div v-if="userAddress" class="wallet-pill">
-        {{ userAddress.substring(0, 6) }}...{{ userAddress.slice(-4) }}
+      <div class="window-title">phantomx@THALHAT: ~/gen-forge</div>
+      <div class="header-actions">
+        <div v-if="userAddress" class="user-id">
+          CONNECTED: {{ userAddress.substring(0, 6) }}...
+        </div>
+        <button v-else @click="connectWallet" class="auth-btn">sudo login</button>
       </div>
-      <button v-else @click="connectWallet" class="connect-btn">Connect Architect</button>
     </header>
 
-    <main class="forge-container">
-      <section class="panel input-panel">
-        <div class="panel-header">
-          <Terminal :size="18" />
-          <h2>Architect's Prompt</h2>
+    <main class="terminal-body">
+      <section class="terminal-pane input-pane">
+        <div class="prompt-line">
+          <span class="user-path">phantomx@THALHAT</span>:<span class="dir">~/gen-forge</span>$ 
+          <span class="cmd">architect --prompt</span>
         </div>
-        <div class="input-area">
-          <textarea 
-            v-model="prompt" 
-            placeholder="Describe your contract... (e.g. 'A decentralized voting system for a DAO')"
-            :disabled="isArchitecting"
-          ></textarea>
+        
+        <textarea 
+          v-model="prompt" 
+          placeholder="Enter contract description here..."
+          :disabled="isArchitecting"
+          class="ubuntu-input"
+        ></textarea>
+
+        <div class="actions">
           <button 
             @click="architectContract" 
-            class="forge-btn"
+            class="execute-btn"
             :disabled="isArchitecting || !userAddress"
           >
-            <Rocket v-if="!isArchitecting" :size="20" />
-            <div v-else class="loader"></div>
-            {{ isArchitecting ? 'Architecting...' : 'Generate Intelligent Contract' }}
+            [ {{ isArchitecting ? 'RUNNING...' : 'EXECUTE' }} ]
           </button>
         </div>
-        <p class="status">{{ statusMessage }}</p>
+        
+        <div class="system-logs">
+          <p class="log-entry">> {{ statusMessage }}</p>
+        </div>
       </section>
 
-      <section class="panel output-panel">
-        <div class="panel-header">
-          <Code2 :size="18" />
-          <h2>Generated Intelligent Logic (.py)</h2>
-          <button @click="copyToClipboard" class="icon-btn" v-if="generatedCode">
-            <Share2 :size="16" />
-          </button>
-        </div>
-        <div class="code-viewer">
-          <pre v-if="generatedCode"><code>{{ generatedCode }}</code></pre>
-          <div v-else class="empty-state">
-            <p>Awaiting architecture details...</p>
+      <section class="terminal-pane output-pane">
+        <div class="pane-label">/var/www/generated_contract.py</div>
+        <div class="code-editor">
+          <div class="line-numbers">
+            <span v-for="n in 15" :key="n">{{ n }}</span>
           </div>
+          <pre v-if="generatedCode"><code>{{ generatedCode }}</code></pre>
+          <div v-else class="cursor-blink">_</div>
         </div>
       </section>
     </main>
@@ -141,135 +59,164 @@ const copyToClipboard = () => {
 </template>
 
 <style scoped>
-.forge-app {
+/* UBUNTU FONT IMPORT */
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
+
+.terminal-container {
   min-height: 100vh;
-  background-color: #0f172a;
-  color: #e2e8f0;
-  font-family: 'Fira Code', monospace;
+  background-color: #300a24; /* Official Ubuntu Purple */
+  color: #ffffff;
+  font-family: 'Ubuntu Mono', monospace;
   display: flex;
   flex-direction: column;
-}
-
-.header {
-  padding: 20px 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  background: #0f172a;
-}
-
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: 2px; }
-.brand span { color: #38bdf8; }
-.icon-primary { color: #38bdf8; }
-
-.wallet-pill {
-  background: #1e293b;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  border: 1px solid #334155;
-}
-
-.connect-btn {
-  background: #38bdf8;
-  color: #0f172a;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.forge-container {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding: 40px;
-}
-
-.panel {
-  background: #1e293b;
-  border-radius: 12px;
-  border: 1px solid #334155;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.panel-header {
-  padding: 15px 20px;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid #334155;
-}
-
-.panel-header h2 { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; flex: 1; }
-
-.input-area { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
-
-textarea {
-  flex: 1;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 8px;
   padding: 20px;
-  color: #38bdf8;
-  font-family: inherit;
-  resize: none;
-  outline: none;
+  box-sizing: border-box;
 }
 
-.forge-btn {
-  background: #38bdf8;
-  color: #0f172a;
-  border: none;
-  padding: 15px;
-  border-radius: 8px;
-  font-weight: 800;
+/* WINDOW HEADER STYLING */
+.window-header {
+  background-color: #4a4a4a;
+  height: 35px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.code-viewer {
-  flex: 1;
-  background: #020617;
-  padding: 20px;
-  overflow-y: auto;
+  padding: 0 15px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid #222;
   position: relative;
 }
 
-pre { margin: 0; color: #10b981; line-height: 1.6; font-size: 0.9rem; }
-
-.empty-state {
-  height: 100%;
+.window-controls {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #475569;
+  gap: 8px;
 }
 
-.status { padding: 10px 20px; font-size: 0.75rem; color: #94a3b8; font-style: italic; }
-
-.loader {
-  width: 20px;
-  height: 20px;
-  border: 3px solid #0f172a;
-  border-top: 3px solid transparent;
+.dot {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.close { background: #df4814; }
+.minimize { background: #efb73e; }
+.expand { background: #5eaa1a; }
+
+.window-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+  color: #ddd;
+}
+
+.header-actions {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+/* TERMINAL CORE */
+.terminal-body {
+  flex: 1;
+  background-color: rgba(48, 10, 36, 0.95);
+  border: 1px solid #5e2750;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 20px;
+  gap: 20px;
+}
+
+.terminal-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* INPUT SECTION */
+.user-path { color: #87ff5f; font-weight: bold; }
+.dir { color: #5fafff; font-weight: bold; }
+.cmd { color: #ffffff; margin-left: 8px; }
+
+.ubuntu-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid #5e2750;
+  color: #38bdf8;
+  padding: 15px;
+  font-family: 'Ubuntu Mono', monospace;
+  font-size: 1.1rem;
+  outline: none;
+  resize: none;
+}
+
+.execute-btn {
+  background: #df4814;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.execute-btn:hover:not(:disabled) { background: #ff5c26; }
+.execute-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* CODE EDITOR SECTION */
+.output-pane {
+  background: #1c1c1c;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.pane-label {
+  background: #333;
+  padding: 5px 15px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.code-editor {
+  display: flex;
+  padding: 15px;
+  font-size: 1rem;
+  overflow: auto;
+}
+
+.line-numbers {
+  display: flex;
+  flex-direction: column;
+  color: #555;
+  padding-right: 15px;
+  border-right: 1px solid #333;
+  text-align: right;
+  user-select: none;
+}
+
+pre {
+  margin: 0;
+  padding-left: 15px;
+  color: #f8f8f2;
+}
+
+.system-logs {
+  font-size: 0.85rem;
+  color: #aea79f;
+  margin-top: 10px;
+}
+
+/* CURSOR BLINK */
+.cursor-blink {
+  margin-left: 15px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink { 
+  0% { opacity: 1; } 
+  50% { opacity: 0; } 
+  100% { opacity: 1; } 
+}
 
 @media (max-width: 900px) {
-  .forge-container { grid-template-columns: 1fr; }
+  .terminal-body { grid-template-columns: 1fr; }
 }
 </style>
