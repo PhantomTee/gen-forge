@@ -25,21 +25,53 @@ const generatedCode = ref("");
 const isArchitecting = ref(false);
 
 /**
+ * TOAST NOTIFICATION LOGIC
+ */
+const toast = ref({
+  visible: false,
+  message: "",
+  type: "error" // can be 'error' or 'success'
+});
+
+const showToast = (msg: string, type: "error" | "success" = "error") => {
+  toast.value = {
+    visible: true,
+    message: msg,
+    type: type
+  };
+  
+  // Hide the toast after 4 seconds
+  setTimeout(() => {
+    toast.value.visible = false;
+  }, 4000);
+};
+
+/**
  * WALLET LOGIC
  */
 const connectWallet = async () => {
   const ethWindow = window as any;
+  
   if (!ethWindow.ethereum) {
+    statusMessage.value = "ERROR: No Web3 provider found.";
+    showToast("System Error: No Web3 wallet detected. Please install MetaMask or Rabby.", "error");
     return;
   }
+
   try {
+    statusMessage.value = "Pinging wallet extension...";
+    
     const accounts = await ethWindow.ethereum.request({ 
       method: 'eth_requestAccounts' 
     });
+    
     userAddress.value = accounts[0];
     statusMessage.value = "Access granted. Ready to forge.";
-  } catch (e) {
-    statusMessage.value = "Connection Failed.";
+    showToast("Wallet connected successfully!", "success");
+    
+  } catch (e: any) {
+    statusMessage.value = "Connection Rejected or Failed.";
+    showToast(`Connection failed: ${e.message}`, "error");
   }
 };
 
@@ -71,11 +103,13 @@ const architectContract = async () => {
     setTimeout(() => {
       generatedCode.value = `from genlayer import *\n\n@gl.contract\nclass IntelligentContract:\n    def __init__(self):\n        self.owner = gl.message.sender\n\n    @gl.public.write\n    def execute_logic(self, val: int):\n        # Generated based on: ${prompt.value}\n        return f"Logic executed with {val}"`;
       statusMessage.value = "Architecture complete. Code saved to /var/www/";
+      showToast("Intelligent Contract Generated!", "success");
       isArchitecting.value = false;
     }, 3000);
 
-  } catch (e) {
+  } catch (e: any) {
     statusMessage.value = "Architecting Failed. Check Gas.";
+    showToast(`Transaction failed: ${e.message}`, "error");
     isArchitecting.value = false;
   }
 };
@@ -83,11 +117,23 @@ const architectContract = async () => {
 const copyToClipboard = () => {
   navigator.clipboard.writeText(generatedCode.value);
   statusMessage.value = "Code copied to clipboard!";
+  showToast("Code copied to clipboard!", "success");
 };
 </script>
 
 <template>
   <div class="terminal-container">
+    
+    <Transition name="slide-fade">
+      <div 
+        v-if="toast.visible" 
+        class="toast-notification"
+        :class="toast.type"
+      >
+        {{ toast.message }}
+      </div>
+    </Transition>
+
     <header class="window-header">
       <div class="window-controls">
         <span class="dot close"></span>
@@ -211,7 +257,44 @@ const copyToClipboard = () => {
   display: flex;
   flex-direction: column;
   padding: 15px;
+  position: relative;
 }
+
+/* --- TOAST STYLES --- */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid #ffffff33;
+}
+
+.toast-notification.error {
+  background-color: #df4814; /* Ubuntu Red */
+}
+
+.toast-notification.success {
+  background-color: #5eaa1a; /* Ubuntu Green */
+}
+
+/* Toast Animations */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.4s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(20px) translateY(-20px);
+  opacity: 0;
+}
+/* ------------------- */
 
 .window-header {
   background-color: #4a4a4a;
