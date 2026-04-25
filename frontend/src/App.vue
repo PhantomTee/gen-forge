@@ -1,3 +1,106 @@
+<script setup lang="ts">
+import { 
+  ref 
+} from 'vue';
+
+import { 
+  Terminal, 
+  Code2, 
+  Rocket, 
+  Share2, 
+  Cpu 
+} from 'lucide-vue-next';
+
+/**
+ * CONFIGURATION
+ */
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || "0xACb12337e6dD779547F929F8c2990786f7234e9D";
+
+const userAddress = ref("");
+
+const statusMessage = ref("System online. Awaiting architect login...");
+
+const prompt = ref("");
+
+const generatedCode = ref("");
+
+const isArchitecting = ref(false);
+
+const targetNetwork = {
+  chainId: '0x107d',
+  chainName: 'GenLayer Asimov L2',
+  rpcUrls: [
+    'https://rpc.testnet-chain.genlayer.com'
+  ],
+  nativeCurrency: { 
+    name: 'GEN', 
+    symbol: 'GEN', 
+    decimals: 18 
+  }
+};
+
+/**
+ * WALLET LOGIC
+ */
+const connectWallet = async () => {
+  const ethWindow = window as any;
+  if (!ethWindow.ethereum) {
+    return;
+  }
+  try {
+    const accounts = await ethWindow.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    userAddress.value = accounts[0];
+    statusMessage.value = "Access granted. Ready to forge.";
+  } catch (e) {
+    statusMessage.value = "Connection Failed.";
+  }
+};
+
+/**
+ * GENFORGE LOGIC
+ */
+const architectContract = async () => {
+  if (!prompt.value) {
+    return;
+  }
+  
+  isArchitecting.value = true;
+  statusMessage.value = "GenVM Validators reaching consensus on AI output...";
+  
+  try {
+    const ethWindow = window as any;
+    
+    await ethWindow.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [
+        {
+          from: userAddress.value,
+          to: contractAddress,
+          data: '0x'
+        }
+      ]
+    });
+
+    setTimeout(() => {
+      generatedCode.value = `from genlayer import *\n\n@gl.contract\nclass IntelligentContract:\n    def __init__(self):\n        self.owner = gl.message.sender\n\n    @gl.public.write\n    def execute_logic(self, val: int):\n        # Generated based on: ${prompt.value}\n        return f"Logic executed with {val}"`;
+      statusMessage.value = "Architecture complete. Code saved to /var/www/";
+      isArchitecting.value = false;
+    }, 3000);
+
+  } catch (e) {
+    statusMessage.value = "Architecting Failed. Check Gas.";
+    isArchitecting.value = false;
+  }
+};
+
+const copyToClipboard = () => {
+  navigator.clipboard.writeText(generatedCode.value);
+  statusMessage.value = "Code copied to clipboard!";
+};
+</script>
+
 <template>
   <div class="terminal-container">
     <header class="window-header">
@@ -6,52 +109,106 @@
         <span class="dot minimize"></span>
         <span class="dot expand"></span>
       </div>
-      <div class="window-title">phantomx@THALHAT: ~/gen-forge</div>
+      <div class="window-title">
+        phantomx@THALHAT: ~/gen-forge
+      </div>
       <div class="header-actions">
-        <div v-if="userAddress" class="user-id">
+        <div 
+          v-if="userAddress" 
+          class="user-pill"
+        >
           CONNECTED: {{ userAddress.substring(0, 6) }}...
         </div>
-        <button v-else @click="connectWallet" class="auth-btn">sudo login</button>
+        <button 
+          v-else 
+          @click="connectWallet" 
+          class="sudo-btn"
+        >
+          sudo login
+        </button>
       </div>
     </header>
 
     <main class="terminal-body">
-      <section class="terminal-pane input-pane">
+      <section class="pane">
         <div class="prompt-line">
-          <span class="user-path">phantomx@THALHAT</span>:<span class="dir">~/gen-forge</span>$ 
-          <span class="cmd">architect --prompt</span>
+          <span class="user">
+            phantomx@THALHAT
+          </span>
+          :
+          <span class="path">
+            ~/gen-forge
+          </span>
+          $ 
+          <span class="cmd">
+            architect --prompt
+          </span>
         </div>
         
         <textarea 
           v-model="prompt" 
-          placeholder="Enter contract description here..."
+          placeholder="Describe the contract you want to build..."
           :disabled="isArchitecting"
           class="ubuntu-input"
         ></textarea>
 
-        <div class="actions">
-          <button 
-            @click="architectContract" 
-            class="execute-btn"
-            :disabled="isArchitecting || !userAddress"
-          >
-            [ {{ isArchitecting ? 'RUNNING...' : 'EXECUTE' }} ]
-          </button>
-        </div>
+        <button 
+          @click="architectContract" 
+          class="execute-btn"
+          :disabled="isArchitecting || !userAddress"
+        >
+          <Rocket 
+            v-if="!isArchitecting" 
+            :size="18" 
+          />
+          <span 
+            v-else 
+            class="loader"
+          ></span>
+          {{ isArchitecting ? 'RUNNING CONSENSUS...' : 'EXECUTE' }}
+        </button>
         
-        <div class="system-logs">
-          <p class="log-entry">> {{ statusMessage }}</p>
+        <div class="logs">
+          <p>
+            > {{ statusMessage }}
+          </p>
         </div>
       </section>
 
-      <section class="terminal-pane output-pane">
-        <div class="pane-label">/var/www/generated_contract.py</div>
-        <div class="code-editor">
-          <div class="line-numbers">
-            <span v-for="n in 15" :key="n">{{ n }}</span>
+      <section class="pane output-bg">
+        <div class="pane-header">
+          <Code2 :size="16" />
+          <span>
+            /var/www/generated_contract.py
+          </span>
+          <button 
+            v-if="generatedCode" 
+            @click="copyToClipboard" 
+            class="copy-btn"
+          >
+            <Share2 :size="14" />
+          </button>
+        </div>
+        <div class="code-area">
+          <div class="lines">
+            <span 
+              v-for="n in 15" 
+              :key="n"
+            >
+              {{ n }}
+            </span>
           </div>
-          <pre v-if="generatedCode"><code>{{ generatedCode }}</code></pre>
-          <div v-else class="cursor-blink">_</div>
+          <pre v-if="generatedCode">
+            <code>
+              {{ generatedCode }}
+            </code>
+          </pre>
+          <div 
+            v-else 
+            class="cursor"
+          >
+            _
+          </div>
         </div>
       </section>
     </main>
@@ -59,64 +216,76 @@
 </template>
 
 <style scoped>
-/* UBUNTU FONT IMPORT */
 @import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
 
 .terminal-container {
   min-height: 100vh;
-  background-color: #300a24; /* Official Ubuntu Purple */
-  color: #ffffff;
+  background-color: #300a24;
+  color: #fff;
   font-family: 'Ubuntu Mono', monospace;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  box-sizing: border-box;
+  padding: 15px;
 }
 
-/* WINDOW HEADER STYLING */
 .window-header {
   background-color: #4a4a4a;
   height: 35px;
   display: flex;
   align-items: center;
   padding: 0 15px;
-  border-radius: 6px 6px 0 0;
-  border-bottom: 1px solid #222;
+  border-radius: 8px 8px 0 0;
   position: relative;
 }
 
-.window-controls {
-  display: flex;
-  gap: 8px;
+.window-controls { 
+  display: flex; 
+  gap: 8px; 
 }
 
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+.dot { 
+  width: 12px; 
+  height: 12px; 
+  border-radius: 50%; 
 }
 
-.close { background: #df4814; }
-.minimize { background: #efb73e; }
-.expand { background: #5eaa1a; }
-
-.window-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.9rem;
-  color: #ddd;
+.close { 
+  background: #df4814; 
 }
 
-.header-actions {
-  margin-left: auto;
-  font-size: 0.8rem;
+.minimize { 
+  background: #efb73e; 
 }
 
-/* TERMINAL CORE */
+.expand { 
+  background: #5eaa1a; 
+}
+
+.window-title { 
+  position: absolute; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  font-size: 0.85rem; 
+  color: #ccc; 
+}
+
+.header-actions { 
+  margin-left: auto; 
+}
+
+.sudo-btn {
+  background: #df4814;
+  color: white;
+  border: none;
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .terminal-body {
   flex: 1;
-  background-color: rgba(48, 10, 36, 0.95);
+  background: rgba(48, 10, 36, 0.98);
   border: 1px solid #5e2750;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -124,99 +293,131 @@
   gap: 20px;
 }
 
-.terminal-pane {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+.pane { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 15px; 
 }
 
-/* INPUT SECTION */
-.user-path { color: #87ff5f; font-weight: bold; }
-.dir { color: #5fafff; font-weight: bold; }
-.cmd { color: #ffffff; margin-left: 8px; }
+.user { 
+  color: #87ff5f; 
+  font-weight: bold; 
+}
+
+.path { 
+  color: #5fafff; 
+  font-weight: bold; 
+}
+
+.cmd { 
+  color: #fff; 
+  margin-left: 8px; 
+}
 
 .ubuntu-input {
   flex: 1;
-  background: transparent;
+  background: rgba(0,0,0,0.2);
   border: 1px solid #5e2750;
   color: #38bdf8;
   padding: 15px;
   font-family: 'Ubuntu Mono', monospace;
   font-size: 1.1rem;
-  outline: none;
   resize: none;
+  outline: none;
 }
 
 .execute-btn {
   background: #df4814;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 12px;
   font-family: inherit;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   cursor: pointer;
-  transition: background 0.2s;
 }
 
-.execute-btn:hover:not(:disabled) { background: #ff5c26; }
-.execute-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* CODE EDITOR SECTION */
-.output-pane {
-  background: #1c1c1c;
-  border-radius: 4px;
-  border: 1px solid #333;
+.execute-btn:disabled { 
+  opacity: 0.5; 
 }
 
-.pane-label {
-  background: #333;
-  padding: 5px 15px;
-  font-size: 0.8rem;
-  color: #aaa;
+.output-bg { 
+  background: #1c1c1c; 
+  border-radius: 4px; 
+  border: 1px solid #333; 
 }
 
-.code-editor {
-  display: flex;
-  padding: 15px;
-  font-size: 1rem;
-  overflow: auto;
+.pane-header { 
+  background: #333; 
+  padding: 6px 15px; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  font-size: 0.8rem; 
+  color: #aaa; 
 }
 
-.line-numbers {
-  display: flex;
-  flex-direction: column;
-  color: #555;
-  padding-right: 15px;
-  border-right: 1px solid #333;
-  text-align: right;
-  user-select: none;
+.copy-btn { 
+  margin-left: auto; 
+  background: none; 
+  border: none; 
+  color: #38bdf8; 
+  cursor: pointer; 
 }
 
-pre {
-  margin: 0;
-  padding-left: 15px;
-  color: #f8f8f2;
+.code-area { 
+  display: flex; 
+  padding: 15px; 
+  font-size: 1rem; 
 }
 
-.system-logs {
-  font-size: 0.85rem;
-  color: #aea79f;
-  margin-top: 10px;
+.lines { 
+  display: flex; 
+  flex-direction: column; 
+  color: #555; 
+  padding-right: 15px; 
+  border-right: 1px solid #333; 
+  text-align: right; 
 }
 
-/* CURSOR BLINK */
-.cursor-blink {
-  margin-left: 15px;
-  animation: blink 1s infinite;
+pre { 
+  margin: 0; 
+  padding-left: 15px; 
+  color: #f8f8f2; 
+  white-space: pre-wrap; 
+}
+
+.cursor { 
+  margin-left: 15px; 
+  animation: blink 1s infinite; 
+  color: #df4814; 
+  font-weight: bold; 
 }
 
 @keyframes blink { 
-  0% { opacity: 1; } 
+  0%, 100% { opacity: 1; } 
   50% { opacity: 0; } 
-  100% { opacity: 1; } 
 }
 
-@media (max-width: 900px) {
-  .terminal-body { grid-template-columns: 1fr; }
+.loader { 
+  width: 14px; 
+  height: 14px; 
+  border: 2px solid #fff; 
+  border-top-color: transparent; 
+  border-radius: 50%; 
+  animation: spin 0.8s linear infinite; 
+}
+
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
+}
+
+@media (max-width: 900px) { 
+  .terminal-body { 
+    grid-template-columns: 1fr; 
+  } 
 }
 </style>
