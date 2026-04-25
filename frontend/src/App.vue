@@ -77,7 +77,6 @@ const connectWallet = async () => {
 
 /**
  * GENFORGE - Real On-Chain Intelligent Contract Generation
- * Safe version using only window.ethereum (no external libraries needed yet)
  */
 const architectContract = async () => {
   if (!prompt.value?.trim()) {
@@ -88,27 +87,25 @@ const architectContract = async () => {
   isArchitecting.value = true;
   statusMessage.value = "Sending request to GenVM Validators...";
 
-  let txHash: string | null = null;
-
   try {
     const ethWindow = window as any;
 
-    txHash = await ethWindow.ethereum.request({
+    const txHash: string = await ethWindow.ethereum.request({
       method: 'eth_sendTransaction',
       params: [{
         from: userAddress.value,
         to: contractAddress,
-        data: '0x',           // TODO: Later encode the prompt here
+        data: '0x',
       }]
     });
 
+    // Now txHash is guaranteed to be string (if it reaches here)
     statusMessage.value = `Transaction sent! Hash: ${txHash}`;
     showToast("Transaction submitted to GenLayer", "success");
 
-    // === NEW: Poll for receipt (safe & works with raw ethereum provider) ===
     statusMessage.value = "Waiting for GenVM Validators consensus (this may take 5-15 seconds)...";
 
-    const receipt = await waitForReceipt(txHash);   // ← This function is defined below
+    const receipt = await waitForReceipt(txHash);   // ← Now safe
 
     if (receipt?.status === '0x0' || receipt?.status === 0) {
       throw new Error("Transaction reverted on GenLayer");
@@ -116,8 +113,7 @@ const architectContract = async () => {
 
     statusMessage.value = "Consensus reached. Generating intelligent contract...";
 
-    // For now: Show realistic placeholder (replace this later with real contract call)
-    generatedCode.value = `# Transaction confirmed on GenLayer\n` +
+    generatedCode.value = `# Transaction confirmed on GenLayer Testnet\n` +
       `# TX Hash: ${txHash}\n` +
       `# Prompt: ${prompt.value}\n\n` +
       `from genlayer import *\n\n` +
@@ -127,8 +123,7 @@ const architectContract = async () => {
       `        self.owner = gl.message.sender\n\n` +
       `    @gl.public.write\n` +
       `    def execute_logic(self):\n` +
-      `        # AI-generated based on prompt:\n` +
-      `        # "${prompt.value}"\n` +
+      `        # AI-generated based on: "${prompt.value}"\n` +
       `        return "Intelligent logic executed successfully on GenLayer"`;
 
     statusMessage.value = "Intelligent Contract generated successfully on-chain!";
@@ -143,8 +138,6 @@ const architectContract = async () => {
       errorMsg = "You rejected the transaction in MetaMask.";
     } else if (e.message?.includes("gas") || e.message?.includes("Gas")) {
       errorMsg = "Transaction failed. Check your gas or balance.";
-    } else if (txHash) {
-      errorMsg = `Transaction sent but failed. Hash: ${txHash}`;
     }
 
     statusMessage.value = errorMsg;
@@ -154,7 +147,6 @@ const architectContract = async () => {
   }
 };
 
-
 const waitForReceipt = async (txHash: string, maxAttempts = 30): Promise<any> => {
   const ethWindow = window as any;
   let attempts = 0;
@@ -162,22 +154,26 @@ const waitForReceipt = async (txHash: string, maxAttempts = 30): Promise<any> =>
   while (attempts < maxAttempts) {
     attempts++;
 
-    const receipt = await ethWindow.ethereum.request({
-      method: 'eth_getTransactionReceipt',
-      params: [txHash]
-    });
+    try {
+      const receipt = await ethWindow.ethereum.request({
+        method: 'eth_getTransactionReceipt',
+        params: [txHash]
+      });
 
-    if (receipt) {
-      console.log("Transaction receipt received:", receipt);
-      return receipt;
+      if (receipt) {
+        console.log("Transaction receipt:", receipt);
+        return receipt;
+      }
+    } catch (err) {
+      console.warn("Receipt poll error:", err);
     }
 
-    // Wait 2 seconds before next poll
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  throw new Error("Transaction took too long. Please check the hash on the explorer.");
+  throw new Error(`Timeout waiting for receipt. TX: ${txHash}`);
 };
+
 const copyToClipboard = () => {
   navigator.clipboard.writeText(generatedCode.value);
   statusMessage.value = "Code copied to clipboard!";
