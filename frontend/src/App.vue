@@ -4,11 +4,9 @@ import {
 } from 'vue';
 
 import { 
-  Terminal, 
   Code2, 
   Rocket, 
-  Share2, 
-  Cpu 
+  Share2 
 } from 'lucide-vue-next';
 
 /**
@@ -25,19 +23,6 @@ const prompt = ref("");
 const generatedCode = ref("");
 
 const isArchitecting = ref(false);
-
-const targetNetwork = {
-  chainId: '0x107d',
-  chainName: 'GenLayer Asimov L2',
-  rpcUrls: [
-    'https://rpc.testnet-chain.genlayer.com'
-  ],
-  nativeCurrency: { 
-    name: 'GEN', 
-    symbol: 'GEN', 
-    decimals: 18 
-  }
-};
 
 /**
  * WALLET LOGIC
