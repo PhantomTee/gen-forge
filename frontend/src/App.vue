@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { Code2, Rocket, Share2, AlertTriangle } from 'lucide-vue-next';
 import { createClient } from 'genlayer-js';
-import { studionet } from 'genlayer-js/chains';
+import { testnetAsimov } from 'genlayer-js/chains';
 
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || "0xYOUR_NEW_ADDRESS_HERE";
 const userAddress = ref("");
@@ -11,6 +11,7 @@ const prompt = ref("");
 const generatedCode = ref("");
 const isArchitecting = ref(false);
 const genClient = ref<any>(null);
+const isLeaderOnly = ref(false); // Tracks execution mode
 
 const toast = ref({
   visible: false,
@@ -38,11 +39,11 @@ const connectWallet = async () => {
 
     // Initialize 100% real GenLayer client
     genClient.value = createClient({
-      chain: studionet,
-      account: userAddress.value as `0x${string}`,
-    });
+    chain: testnetAsimov,
+    account: userAddress.value as `0x${string}`,
+  });
 
-    await genClient.value.connect("studionet");
+  await genClient.value.connect("testnetAsimov");
     statusMessage.value = "Access granted. Ready to forge.";
     showToast("Wallet connected successfully!", "success");
   } catch (e: any) {
@@ -67,11 +68,12 @@ const architectContract = async () => {
   try {
     // 1. Send the REAL Write Transaction via GenLayer SDK
     const txHash = await genClient.value.writeContract({
-      address: contractAddress as `0x${string}`,
-      functionName: 'draft_contract',
-      args: [prompt.value],
-      value: BigInt(0),
-    });
+    address: contractAddress as `0x${string}`,
+    functionName: 'draft_contract',
+    args: [prompt.value],
+    value: BigInt(0),
+    leaderOnly: isLeaderOnly.value, // Injects the UI toggle state
+  });
 
     statusMessage.value = `Transaction sent! Hash: ${txHash}`;
     showToast("Transaction submitted to GenLayer", "success");
@@ -79,9 +81,11 @@ const architectContract = async () => {
 
     // 2. Poll the network for real cryptographic finality
     await genClient.value.waitForTransactionReceipt({
-      hash: txHash,
-      status: 'FINALIZED',
-    });
+    hash: txHash,
+    status: 'FINALIZED',
+    interval: 5000,  // Check every 5 seconds
+    retries: 120,    // Allow up to 10 minutes for heavy LLM processing
+  });
 
     statusMessage.value = "Consensus reached. Fetching generated code...";
 
@@ -172,6 +176,25 @@ const copyToClipboard = () => {
           :disabled="isArchitecting"
           class="ubuntu-input"
         ></textarea>
+        <div class="mode-toggle">
+        <label class="toggle-label">
+          <span class="toggle-text">
+            Execution Mode: 
+            <strong :class="isLeaderOnly ? 'text-warn' : 'text-safe'">
+              {{ isLeaderOnly ? 'FAST (Leader Only - Open Loop)' : 'SECURE (Full Consensus - Closed Loop)' }}
+            </strong>
+          </span>
+          <div class="switch-container">
+            <input 
+              type="checkbox" 
+              v-model="isLeaderOnly" 
+              :disabled="isArchitecting"
+              class="hidden-checkbox"
+            >
+            <div class="slider"></div>
+          </div>
+        </label>
+      </div>
 
         <button 
           @click="architectContract" 
@@ -211,8 +234,7 @@ const copyToClipboard = () => {
 </template>
 
 <style scoped>
-@import url('[https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap)');
-
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
 .terminal-container {
   min-height: 100vh;
   background-color: #300a24;
@@ -380,4 +402,32 @@ pre { margin: 0; color: #f8f8f2; white-space: pre-wrap; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) { .terminal-body { grid-template-columns: 1fr; } }
+
+/* --- TOGGLE SWITCH STYLES --- */
+.mode-toggle {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid #5e2750;
+  padding: 10px 15px;
+  border-radius: 4px;
+}
+.toggle-label {
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; font-family: 'Ubuntu Mono', monospace;
+}
+.toggle-text { color: #ccc; font-size: 0.95rem; }
+.text-warn { color: #efb73e; }
+.text-safe { color: #5eaa1a; }
+.switch-container { position: relative; width: 46px; height: 24px; }
+.hidden-checkbox { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #4a4a4a; transition: .4s; border-radius: 24px; border: 1px solid #333;
+}
+.slider:before {
+  position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+  background-color: #87ff5f; transition: .4s; border-radius: 50%;
+}
+.hidden-checkbox:checked + .slider { background-color: #df4814; }
+.hidden-checkbox:checked + .slider:before { transform: translateX(22px); background-color: #fff; }
+.hidden-checkbox:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 </style>
