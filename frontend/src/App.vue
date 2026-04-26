@@ -4,7 +4,6 @@ import { Code2, Rocket, Share2, AlertTriangle } from 'lucide-vue-next';
 import { createClient } from 'genlayer-js';
 import { testnetAsimov } from 'genlayer-js/chains';
 
-const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || "0xYOUR_NEW_ADDRESS_HERE";
 const userAddress = ref("");
 const statusMessage = ref("System online. Awaiting architect login...");
 const prompt = ref("");
@@ -136,7 +135,7 @@ const copyToClipboard = () => {
         <span class="dot expand"></span>
       </div>
       <div class="window-title">
-        phantomx@THALHAT: ~/gen-forge
+        user@root: ~/gen-forge
       </div>
       <div class="header-actions">
         <div v-if="userAddress" class="connected-group">
@@ -182,7 +181,7 @@ const copyToClipboard = () => {
 
         <div v-if="activeTab === 'forge' || !userAddress" class="tab-content">
           <div class="prompt-line">
-            <span class="user">phantomx@THALHAT</span>:
+            <span class="user">user@root</span>:
             <span class="path">~/gen-forge</span>$ 
             <span class="cmd">architect --prompt</span>
           </div>
