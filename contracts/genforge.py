@@ -52,6 +52,7 @@ CRITICAL GENLAYER RULES:
 5. Do not initialize storage collections in __init__.
 6. Classes MUST inherit from gl.Contract.
 7. Methods MUST use @gl.public.write or @gl.public.view.
+8. NEVER add decorators like @gl.public.write or @gl.public.view to the __init__ function. It must remain private.
 
 Respond ONLY with this JSON format:
 {{"code": "exact python code as a string"}}"""
