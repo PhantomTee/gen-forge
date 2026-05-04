@@ -2,7 +2,7 @@
 import { ref, reactive } from 'vue'; // ADDED 'reactive' HERE
 import { Code2, Rocket, Share2, AlertTriangle } from 'lucide-vue-next';
 import { createClient } from 'genlayer-js';
-import { testnetAsimov } from 'genlayer-js/chains';
+import { studionet } from 'genlayer-js/chains';
 
 const userAddress = ref("");
 const statusMessage = ref("System online. Awaiting architect login...");
@@ -50,7 +50,7 @@ const connectWallet = async () => {
     userAddress.value = accounts[0];
 
     genClient.value = createClient({
-      chain: testnetAsimov,
+      chain: studionet,
       account: userAddress.value as `0x${string}`,
     });
 
