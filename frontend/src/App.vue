@@ -54,7 +54,7 @@ const connectWallet = async () => {
       account: userAddress.value as `0x${string}`,
     });
 
-    await genClient.value.connect("testnetAsimov");
+    await genClient.value.connect("studionet");
     statusMessage.value = "Access granted. Ready to forge.";
     showToast("Wallet connected successfully!", "success");
   } catch (e: any) {
@@ -76,7 +76,7 @@ const architectContract = async () => {
   activeTab.value = 'tasks'; 
 
   try {
-    newTask.status = 'Submitting to Asimov...';
+    newTask.status = 'Submitting to Studionet...';
     const txHash = await genClient.value.writeContract({
       address: import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}`,
       functionName: 'draft_contract',
